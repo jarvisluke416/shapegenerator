@@ -2,22 +2,25 @@
 #include <vector>
 #include <cstring>
 #include <commdlg.h>
+#include <cmath>
 
 
 #define ID_ADD_CIRCLE 1001
 #define ID_REMOVE_ALL 1002
 #define ID_ADD_SQUARE 1003
 #define ID_ADD_TRIANGLE 1004
-
+#define ID_ADD_HEART 1005
+#define ID_ADD_STAR 1006
 
 
 enum ShapeType
 {
     CIRCLE,
     SQUARE,
-    TRIANGLE
+    TRIANGLE,
+    HEART,
+    STAR
 };
-
 
 
 struct Shape
@@ -33,7 +36,6 @@ struct Shape
 };
 
 
-
 std::vector<Shape> shapes;
 
 
@@ -44,8 +46,6 @@ ShapeType placingType = CIRCLE;
 
 bool growing = false;
 bool shrinking = false;
-
-
 
 
 
@@ -65,10 +65,12 @@ void DrawShape(HDC hdc, Shape& shape)
         );
 
 
+    int size =
+        (int)(100 * shape.scale);
 
-    int size = (int)(100 * shape.scale);
 
 
+    // ================= CIRCLE =================
 
     if(shape.type == CIRCLE)
     {
@@ -83,6 +85,8 @@ void DrawShape(HDC hdc, Shape& shape)
 
 
 
+    // ================= SQUARE =================
+
     if(shape.type == SQUARE)
     {
         Rectangle(
@@ -96,21 +100,34 @@ void DrawShape(HDC hdc, Shape& shape)
 
 
 
+    // ================= TRIANGLE =================
+
     if(shape.type == TRIANGLE)
     {
         POINT points[3];
 
 
-        points[0].x = shape.x + size / 2;
-        points[0].y = shape.y;
+        points[0].x =
+            shape.x + size / 2;
+
+        points[0].y =
+            shape.y;
 
 
-        points[1].x = shape.x;
-        points[1].y = shape.y + size;
+
+        points[1].x =
+            shape.x;
+
+        points[1].y =
+            shape.y + size;
 
 
-        points[2].x = shape.x + size;
-        points[2].y = shape.y + size;
+
+        points[2].x =
+            shape.x + size;
+
+        points[2].y =
+            shape.y + size;
 
 
 
@@ -118,6 +135,184 @@ void DrawShape(HDC hdc, Shape& shape)
             hdc,
             points,
             3
+        );
+    }
+
+
+
+
+
+    // ================= HEART =================
+
+    if(shape.type == HEART)
+    {
+        int x = shape.x;
+        int y = shape.y;
+        int s = size;
+
+
+        POINT heart[13];
+
+
+        heart[0] = {
+            x + s / 2,
+            y + s / 4
+        };
+
+
+        heart[1] = {
+            x + s / 3,
+            y - s / 8
+        };
+
+
+        heart[2] = {
+            x,
+            y
+        };
+
+
+        heart[3] = {
+            x,
+            y + s / 3
+        };
+
+
+        heart[4] = {
+            x,
+            y + s / 2
+        };
+
+
+        heart[5] = {
+            x + s / 4,
+            y + s * 3 / 4
+        };
+
+
+        heart[6] = {
+            x + s / 2,
+            y + s
+        };
+
+
+        heart[7] = {
+            x + s * 3 / 4,
+            y + s * 3 / 4
+        };
+
+
+        heart[8] = {
+            x + s,
+            y + s / 2
+        };
+
+
+        heart[9] = {
+            x + s,
+            y + s / 3
+        };
+
+
+        heart[10] = {
+            x + s,
+            y
+        };
+
+
+        heart[11] = {
+            x + s * 2 / 3,
+            y - s / 8
+        };
+
+
+        heart[12] = heart[0];
+
+
+        MoveToEx(
+            hdc,
+            heart[0].x,
+            heart[0].y,
+            NULL
+        );
+
+
+        PolyBezier(
+            hdc,
+            heart,
+            13
+        );
+    }
+
+
+
+
+
+
+    // ================= STAR =================
+
+    if(shape.type == STAR)
+    {
+        POINT points[10];
+
+
+        int centerX =
+            shape.x + size / 2;
+
+
+        int centerY =
+            shape.y + size / 2;
+
+
+
+        double outerRadius =
+            size / 2.0;
+
+
+        double innerRadius =
+            size / 5.0;
+
+
+
+        double angle =
+            -3.14159265358979323846 / 2;
+
+
+
+        for(int i = 0; i < 10; i++)
+        {
+            double radius;
+
+
+            if(i % 2 == 0)
+                radius = outerRadius;
+            else
+                radius = innerRadius;
+
+
+
+            points[i].x =
+                centerX +
+                (int)(cos(angle) * radius);
+
+
+
+            points[i].y =
+                centerY +
+                (int)(sin(angle) * radius);
+
+
+
+            angle +=
+                3.14159265358979323846 / 5;
+        }
+
+
+
+        Polygon(
+            hdc,
+            points,
+            10
         );
     }
 
@@ -137,24 +332,20 @@ void DrawShape(HDC hdc, Shape& shape)
 
 
 
-
-
 LRESULT CALLBACK WindowProc(
     HWND hwnd,
     UINT uMsg,
     WPARAM wParam,
     LPARAM lParam)
 {
-
-
     switch(uMsg)
     {
-
 
 
         case WM_PAINT:
         {
             PAINTSTRUCT ps;
+
 
             HDC hdc =
                 BeginPaint(
@@ -164,8 +355,6 @@ LRESULT CALLBACK WindowProc(
 
 
 
-            // Draw oldest first.
-            // Newest shape appears on top.
             for(size_t i = 0; i < shapes.size(); i++)
             {
                 DrawShape(
@@ -202,18 +391,10 @@ LRESULT CALLBACK WindowProc(
             return 0;
         }
 
-
-
-
-
-
-        case WM_COMMAND:
+                case WM_COMMAND:
         {
-
             switch(LOWORD(wParam))
             {
-
-
 
                 case ID_ADD_CIRCLE:
                 {
@@ -228,7 +409,6 @@ LRESULT CALLBACK WindowProc(
 
                     return 0;
                 }
-
 
 
 
@@ -248,8 +428,6 @@ LRESULT CALLBACK WindowProc(
 
 
 
-
-
                 case ID_ADD_TRIANGLE:
                 {
                     placingType = TRIANGLE;
@@ -266,6 +444,36 @@ LRESULT CALLBACK WindowProc(
 
 
 
+                case ID_ADD_HEART:
+                {
+                    placingType = HEART;
+                    placingShape = true;
+
+                    InvalidateRect(
+                        hwnd,
+                        NULL,
+                        FALSE
+                    );
+
+                    return 0;
+                }
+
+
+
+                case ID_ADD_STAR:
+                {
+                    placingType = STAR;
+                    placingShape = true;
+
+                    InvalidateRect(
+                        hwnd,
+                        NULL,
+                        FALSE
+                    );
+
+                    return 0;
+                }
+
 
 
                 case ID_REMOVE_ALL:
@@ -274,13 +482,11 @@ LRESULT CALLBACK WindowProc(
 
                     placingShape = false;
 
-
                     InvalidateRect(
                         hwnd,
                         NULL,
                         TRUE
                     );
-
 
                     return 0;
                 }
@@ -295,13 +501,10 @@ LRESULT CALLBACK WindowProc(
 
 
 
-
         case WM_LBUTTONDOWN:
         {
-
             if(placingShape)
             {
-
                 Shape newShape;
 
 
@@ -313,8 +516,10 @@ LRESULT CALLBACK WindowProc(
                     HIWORD(lParam);
 
 
+
                 newShape.scale =
                     0.5;
+
 
 
                 newShape.color =
@@ -325,6 +530,7 @@ LRESULT CALLBACK WindowProc(
                     );
 
 
+
                 newShape.type =
                     placingType;
 
@@ -333,6 +539,7 @@ LRESULT CALLBACK WindowProc(
                 shapes.push_back(
                     newShape
                 );
+
 
 
                 placingShape = false;
@@ -358,7 +565,6 @@ LRESULT CALLBACK WindowProc(
 
         case WM_RBUTTONDOWN:
         {
-
             int mouseX =
                 LOWORD(lParam);
 
@@ -368,11 +574,8 @@ LRESULT CALLBACK WindowProc(
 
 
 
-
-            // Check newest shapes first
-            for(int i = (int)shapes.size()-1; i >= 0; i--)
+            for(int i = (int)shapes.size() - 1; i >= 0; i--)
             {
-
                 Shape& shape =
                     shapes[i];
 
@@ -389,8 +592,6 @@ LRESULT CALLBACK WindowProc(
                     mouseY <= shape.y + size
                 )
                 {
-
-
                     CHOOSECOLOR cc = {};
 
                     COLORREF custom[16] = {};
@@ -435,7 +636,6 @@ LRESULT CALLBACK WindowProc(
 
                     break;
                 }
-
             }
 
 
@@ -450,7 +650,6 @@ LRESULT CALLBACK WindowProc(
 
         case WM_KEYDOWN:
         {
-
             if(shapes.empty())
                 break;
 
@@ -486,6 +685,7 @@ LRESULT CALLBACK WindowProc(
 
 
                 case VK_ADD:
+
                 case VK_OEM_PLUS:
                     growing = true;
                     break;
@@ -493,6 +693,7 @@ LRESULT CALLBACK WindowProc(
 
 
                 case VK_SUBTRACT:
+
                 case VK_OEM_MINUS:
                     shrinking = true;
                     break;
@@ -519,11 +720,11 @@ LRESULT CALLBACK WindowProc(
 
         case WM_KEYUP:
         {
-
             switch(wParam)
             {
 
                 case VK_ADD:
+
                 case VK_OEM_PLUS:
                     growing = false;
                     break;
@@ -531,6 +732,7 @@ LRESULT CALLBACK WindowProc(
 
 
                 case VK_SUBTRACT:
+
                 case VK_OEM_MINUS:
                     shrinking = false;
                     break;
@@ -549,10 +751,8 @@ LRESULT CALLBACK WindowProc(
 
         case WM_TIMER:
         {
-
             if(!shapes.empty())
             {
-
                 Shape& shape =
                     shapes.back();
 
@@ -597,7 +797,6 @@ LRESULT CALLBACK WindowProc(
 
         case WM_DESTROY:
         {
-
             KillTimer(
                 hwnd,
                 1
@@ -628,22 +827,20 @@ LRESULT CALLBACK WindowProc(
 
 
 
-
-
 int WINAPI WinMain(
     HINSTANCE hInstance,
     HINSTANCE,
     LPSTR,
     int nCmdShow)
 {
-
-
     const char CLASS_NAME[] =
         "ShapeEditor";
 
 
 
     WNDCLASS wc = {};
+
+
 
     wc.lpfnWndProc =
         WindowProc;
@@ -672,7 +869,7 @@ int WINAPI WinMain(
         CreateWindowEx(
             0,
             CLASS_NAME,
-            "Circle Square Triangle Editor",
+            "Circle Square Triangle Heart Star Editor",
             WS_OVERLAPPEDWINDOW,
 
             CW_USEDEFAULT,
@@ -696,10 +893,8 @@ int WINAPI WinMain(
 
 
 
-
     HMENU hMenu =
         CreateMenu();
-
 
 
     HMENU hShapeMenu =
@@ -732,6 +927,21 @@ int WINAPI WinMain(
     );
 
 
+    AppendMenu(
+        hShapeMenu,
+        MF_STRING,
+        ID_ADD_HEART,
+        "Add Heart"
+    );
+
+
+    AppendMenu(
+        hShapeMenu,
+        MF_STRING,
+        ID_ADD_STAR,
+        "Add Star"
+    );
+
 
     AppendMenu(
         hShapeMenu,
@@ -755,6 +965,7 @@ int WINAPI WinMain(
         hwnd,
         hMenu
     );
+
 
 
 
