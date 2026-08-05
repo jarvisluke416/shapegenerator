@@ -7,13 +7,17 @@
 #define ID_ADD_CIRCLE 1001
 #define ID_REMOVE_ALL 1002
 #define ID_ADD_SQUARE 1003
+#define ID_ADD_TRIANGLE 1004
+
 
 
 enum ShapeType
 {
     CIRCLE,
-    SQUARE
+    SQUARE,
+    TRIANGLE
 };
+
 
 
 struct Shape
@@ -29,6 +33,7 @@ struct Shape
 };
 
 
+
 std::vector<Shape> shapes;
 
 
@@ -39,6 +44,8 @@ ShapeType placingType = CIRCLE;
 
 bool growing = false;
 bool shrinking = false;
+
+
 
 
 
@@ -58,16 +65,22 @@ void DrawShape(HDC hdc, Shape& shape)
         );
 
 
+
+    int size = (int)(100 * shape.scale);
+
+
+
     if(shape.type == CIRCLE)
     {
         Ellipse(
             hdc,
             shape.x,
             shape.y,
-            (int)(shape.x + 100 * shape.scale),
-            (int)(shape.y + 100 * shape.scale)
+            shape.x + size,
+            shape.y + size
         );
     }
+
 
 
     if(shape.type == SQUARE)
@@ -76,10 +89,38 @@ void DrawShape(HDC hdc, Shape& shape)
             hdc,
             shape.x,
             shape.y,
-            (int)(shape.x + 100 * shape.scale),
-            (int)(shape.y + 100 * shape.scale)
+            shape.x + size,
+            shape.y + size
         );
     }
+
+
+
+    if(shape.type == TRIANGLE)
+    {
+        POINT points[3];
+
+
+        points[0].x = shape.x + size / 2;
+        points[0].y = shape.y;
+
+
+        points[1].x = shape.x;
+        points[1].y = shape.y + size;
+
+
+        points[2].x = shape.x + size;
+        points[2].y = shape.y + size;
+
+
+
+        Polygon(
+            hdc,
+            points,
+            3
+        );
+    }
+
 
 
     SelectObject(
@@ -94,6 +135,10 @@ void DrawShape(HDC hdc, Shape& shape)
 
 
 
+
+
+
+
 LRESULT CALLBACK WindowProc(
     HWND hwnd,
     UINT uMsg,
@@ -101,22 +146,26 @@ LRESULT CALLBACK WindowProc(
     LPARAM lParam)
 {
 
+
     switch(uMsg)
     {
+
 
 
         case WM_PAINT:
         {
             PAINTSTRUCT ps;
 
-            HDC hdc = BeginPaint(
-                hwnd,
-                &ps
-            );
+            HDC hdc =
+                BeginPaint(
+                    hwnd,
+                    &ps
+                );
 
 
-            // Draw oldest to newest.
-            // Newest shape automatically appears on top.
+
+            // Draw oldest first.
+            // Newest shape appears on top.
             for(size_t i = 0; i < shapes.size(); i++)
             {
                 DrawShape(
@@ -124,6 +173,7 @@ LRESULT CALLBACK WindowProc(
                     shapes[i]
                 );
             }
+
 
 
             if(placingShape)
@@ -142,6 +192,7 @@ LRESULT CALLBACK WindowProc(
             }
 
 
+
             EndPaint(
                 hwnd,
                 &ps
@@ -154,11 +205,15 @@ LRESULT CALLBACK WindowProc(
 
 
 
+
+
         case WM_COMMAND:
         {
 
             switch(LOWORD(wParam))
             {
+
+
 
                 case ID_ADD_CIRCLE:
                 {
@@ -173,6 +228,7 @@ LRESULT CALLBACK WindowProc(
 
                     return 0;
                 }
+
 
 
 
@@ -193,17 +249,38 @@ LRESULT CALLBACK WindowProc(
 
 
 
+
+                case ID_ADD_TRIANGLE:
+                {
+                    placingType = TRIANGLE;
+                    placingShape = true;
+
+                    InvalidateRect(
+                        hwnd,
+                        NULL,
+                        FALSE
+                    );
+
+                    return 0;
+                }
+
+
+
+
+
                 case ID_REMOVE_ALL:
                 {
                     shapes.clear();
 
                     placingShape = false;
 
+
                     InvalidateRect(
                         hwnd,
                         NULL,
                         TRUE
                     );
+
 
                     return 0;
                 }
@@ -212,6 +289,7 @@ LRESULT CALLBACK WindowProc(
 
             break;
         }
+
 
 
 
@@ -251,12 +329,14 @@ LRESULT CALLBACK WindowProc(
                     placingType;
 
 
+
                 shapes.push_back(
                     newShape
                 );
 
 
                 placingShape = false;
+
 
 
                 InvalidateRect(
@@ -275,6 +355,7 @@ LRESULT CALLBACK WindowProc(
 
 
 
+
         case WM_RBUTTONDOWN:
         {
 
@@ -287,40 +368,54 @@ LRESULT CALLBACK WindowProc(
 
 
 
-            // Search newest shapes first
-            for(int i = (int)shapes.size() - 1; i >= 0; i--)
+
+            // Check newest shapes first
+            for(int i = (int)shapes.size()-1; i >= 0; i--)
             {
 
                 Shape& shape =
                     shapes[i];
 
 
+                int size =
+                    (int)(100 * shape.scale);
+
+
+
                 if(
                     mouseX >= shape.x &&
-                    mouseX <= shape.x + 100 * shape.scale &&
+                    mouseX <= shape.x + size &&
                     mouseY >= shape.y &&
-                    mouseY <= shape.y + 100 * shape.scale
+                    mouseY <= shape.y + size
                 )
                 {
+
 
                     CHOOSECOLOR cc = {};
 
                     COLORREF custom[16] = {};
 
+
+
                     cc.lStructSize =
                         sizeof(CHOOSECOLOR);
+
 
                     cc.hwndOwner =
                         hwnd;
 
+
                     cc.lpCustColors =
                         custom;
+
 
                     cc.rgbResult =
                         shape.color;
 
+
                     cc.Flags =
                         CC_RGBINIT;
+
 
 
                     if(ChooseColor(&cc))
@@ -328,6 +423,7 @@ LRESULT CALLBACK WindowProc(
                         shape.color =
                             cc.rgbResult;
                     }
+
 
 
                     InvalidateRect(
@@ -339,6 +435,7 @@ LRESULT CALLBACK WindowProc(
 
                     break;
                 }
+
             }
 
 
@@ -350,11 +447,13 @@ LRESULT CALLBACK WindowProc(
 
 
 
+
         case WM_KEYDOWN:
         {
 
             if(shapes.empty())
                 break;
+
 
 
             Shape& shape =
@@ -401,6 +500,7 @@ LRESULT CALLBACK WindowProc(
             }
 
 
+
             InvalidateRect(
                 hwnd,
                 NULL,
@@ -410,6 +510,7 @@ LRESULT CALLBACK WindowProc(
 
             return 0;
         }
+
 
 
 
@@ -428,6 +529,7 @@ LRESULT CALLBACK WindowProc(
                     break;
 
 
+
                 case VK_SUBTRACT:
                 case VK_OEM_MINUS:
                     shrinking = false;
@@ -444,6 +546,7 @@ LRESULT CALLBACK WindowProc(
 
 
 
+
         case WM_TIMER:
         {
 
@@ -454,8 +557,10 @@ LRESULT CALLBACK WindowProc(
                     shapes.back();
 
 
+
                 if(growing)
                     shape.scale += 0.02;
+
 
 
                 if(shrinking)
@@ -467,8 +572,10 @@ LRESULT CALLBACK WindowProc(
                     shape.scale = 3.0;
 
 
+
                 if(shape.scale < 0.1)
                     shape.scale = 0.1;
+
 
 
                 InvalidateRect(
@@ -487,8 +594,10 @@ LRESULT CALLBACK WindowProc(
 
 
 
+
         case WM_DESTROY:
         {
+
             KillTimer(
                 hwnd,
                 1
@@ -520,6 +629,7 @@ LRESULT CALLBACK WindowProc(
 
 
 
+
 int WINAPI WinMain(
     HINSTANCE hInstance,
     HINSTANCE,
@@ -534,7 +644,6 @@ int WINAPI WinMain(
 
 
     WNDCLASS wc = {};
-
 
     wc.lpfnWndProc =
         WindowProc;
@@ -558,11 +667,12 @@ int WINAPI WinMain(
 
 
 
+
     HWND hwnd =
         CreateWindowEx(
             0,
             CLASS_NAME,
-            "Circle and Square Editor",
+            "Circle Square Triangle Editor",
             WS_OVERLAPPEDWINDOW,
 
             CW_USEDEFAULT,
@@ -584,12 +694,17 @@ int WINAPI WinMain(
 
 
 
+
+
+
     HMENU hMenu =
         CreateMenu();
 
 
+
     HMENU hShapeMenu =
         CreatePopupMenu();
+
 
 
 
@@ -612,6 +727,15 @@ int WINAPI WinMain(
     AppendMenu(
         hShapeMenu,
         MF_STRING,
+        ID_ADD_TRIANGLE,
+        "Add Triangle"
+    );
+
+
+
+    AppendMenu(
+        hShapeMenu,
+        MF_STRING,
         ID_REMOVE_ALL,
         "Remove All Shapes"
     );
@@ -626,10 +750,12 @@ int WINAPI WinMain(
     );
 
 
+
     SetMenu(
         hwnd,
         hMenu
     );
+
 
 
 
@@ -649,7 +775,10 @@ int WINAPI WinMain(
 
 
 
+
+
     MSG msg = {};
+
 
 
     while(GetMessage(
@@ -664,6 +793,7 @@ int WINAPI WinMain(
         DispatchMessage(&msg);
 
     }
+
 
 
     return 0;
