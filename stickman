@@ -1,11 +1,15 @@
 #include <windows.h>
 
-// Stickman position
-int stickmanX = 350;
-int stickmanY = 100;
+// Circle position
+int circleX = 350;
+int circleY = 100;
 
-// Stickman size
+// Circle size
 double scale = 0.5;
+
+// Resize controls
+bool growing = false;
+bool shrinking = false;
 
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -18,126 +22,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
-
-            int x = stickmanX;
-            int y = stickmanY;
+            int x = circleX;
+            int y = circleY;
             double s = scale;
 
 
-            // ===== HEAD =====
+            // ===== CIRCLE =====
             Ellipse(
                 hdc,
-                (int)(x + 0*s),
-                (int)(y + 0*s),
-                (int)(x + 100*s),
-                (int)(y + 100*s)
-            );
-
-
-            // ===== EYES =====
-            Ellipse(
-                hdc,
-                (int)(x + 25*s),
-                (int)(y + 30*s),
-                (int)(x + 40*s),
-                (int)(y + 45*s)
-            );
-
-            Ellipse(
-                hdc,
-                (int)(x + 60*s),
-                (int)(y + 30*s),
-                (int)(x + 75*s),
-                (int)(y + 45*s)
-            );
-
-
-            // ===== SMILE =====
-            Arc(
-                hdc,
-                (int)(x + 25*s),
-                (int)(y + 40*s),
-                (int)(x + 75*s),
-                (int)(y + 80*s),
-                (int)(x + 25*s),
-                (int)(y + 60*s),
-                (int)(x + 75*s),
-                (int)(y + 60*s)
-            );
-
-
-            // ===== BODY =====
-            MoveToEx(
-                hdc,
-                (int)(x + 50*s),
-                (int)(y + 100*s),
-                NULL
-            );
-
-            LineTo(
-                hdc,
-                (int)(x + 50*s),
-                (int)(y + 250*s)
-            );
-
-
-            // ===== ARMS =====
-
-            MoveToEx(
-                hdc,
-                (int)(x + 50*s),
-                (int)(y + 150*s),
-                NULL
-            );
-
-            LineTo(
-                hdc,
-                (int)(x - 50*s),
-                (int)(y + 200*s)
-            );
-
-
-            MoveToEx(
-                hdc,
-                (int)(x + 50*s),
-                (int)(y + 150*s),
-                NULL
-            );
-
-            LineTo(
-                hdc,
-                (int)(x + 150*s),
-                (int)(y + 200*s)
-            );
-
-
-            // ===== LEGS =====
-
-            MoveToEx(
-                hdc,
-                (int)(x + 50*s),
-                (int)(y + 250*s),
-                NULL
-            );
-
-            LineTo(
-                hdc,
-                (int)(x - 20*s),
-                (int)(y + 350*s)
-            );
-
-
-            MoveToEx(
-                hdc,
-                (int)(x + 50*s),
-                (int)(y + 250*s),
-                NULL
-            );
-
-            LineTo(
-                hdc,
-                (int)(x + 120*s),
-                (int)(y + 350*s)
+                x,
+                y,
+                (int)(x + 100 * s),
+                (int)(y + 100 * s)
             );
 
 
@@ -146,46 +42,118 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
 
 
-        // ===== KEYBOARD CONTROLS =====
+        // ===== KEY PRESSED =====
         case WM_KEYDOWN:
         {
             switch (wParam)
             {
+                // Movement
                 case VK_LEFT:
-                    stickmanX -= 10;
+                    circleX -= 10;
                     break;
 
                 case VK_RIGHT:
-                    stickmanX += 10;
+                    circleX += 10;
                     break;
 
                 case VK_UP:
-                    stickmanY -= 10;
+                    circleY -= 10;
                     break;
 
                 case VK_DOWN:
-                    stickmanY += 10;
+                    circleY += 10;
+                    break;
+
+
+                // Grow
+                case VK_ADD:        // Numpad +
+                case VK_OEM_PLUS:   // Keyboard +
+                    growing = true;
+                    break;
+
+
+                // Shrink
+                case VK_SUBTRACT:   // Numpad -
+                case VK_OEM_MINUS:  // Keyboard -
+                    shrinking = true;
                     break;
             }
 
 
-            // Tell Windows to redraw the window
+            InvalidateRect(hwnd, NULL, TRUE);
+            return 0;
+        }
+
+
+
+        // ===== KEY RELEASED =====
+        case WM_KEYUP:
+        {
+            switch (wParam)
+            {
+                // Stop growing
+                case VK_ADD:
+                case VK_OEM_PLUS:
+                    growing = false;
+                    break;
+
+
+                // Stop shrinking
+                case VK_SUBTRACT:
+                case VK_OEM_MINUS:
+                    shrinking = false;
+                    break;
+            }
+
+            return 0;
+        }
+
+
+
+        // ===== TIMER =====
+        case WM_TIMER:
+        {
+            if (growing)
+            {
+                scale += 0.02;
+            }
+
+
+            if (shrinking)
+            {
+                scale -= 0.02;
+            }
+
+
+            // Size limits
+            if (scale > 3.0)
+                scale = 3.0;
+
+
+            if (scale < 0.1)
+                scale = 0.1;
+
+
             InvalidateRect(hwnd, NULL, TRUE);
 
             return 0;
         }
 
 
+
         case WM_DESTROY:
         {
+            KillTimer(hwnd, 1);
             PostQuitMessage(0);
             return 0;
         }
+
     }
 
 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
+
 
 
 
@@ -195,7 +163,7 @@ int WINAPI WinMain(
     LPSTR,
     int nCmdShow)
 {
-    const char CLASS_NAME[] = "StickmanWindow";
+    const char CLASS_NAME[] = "CircleWindow";
 
 
     WNDCLASS wc = {};
@@ -208,10 +176,11 @@ int WINAPI WinMain(
     RegisterClass(&wc);
 
 
+
     HWND hwnd = CreateWindowEx(
         0,
         CLASS_NAME,
-        "My Moving Stickman",
+        "Resizable Moving Circle",
         WS_OVERLAPPEDWINDOW,
 
         CW_USEDEFAULT,
@@ -226,11 +195,18 @@ int WINAPI WinMain(
     );
 
 
+
     if (hwnd == NULL)
         return 0;
 
 
+
     ShowWindow(hwnd, nCmdShow);
+
+
+    // Timer runs every 16 milliseconds (~60 FPS)
+    SetTimer(hwnd, 1, 16, NULL);
+
 
 
     MSG msg = {};
@@ -240,6 +216,7 @@ int WINAPI WinMain(
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
 
 
     return 0;
