@@ -9,13 +9,11 @@
 #define ID_ADD_SQUARE 1003
 
 
-
 enum ShapeType
 {
     CIRCLE,
     SQUARE
 };
-
 
 
 struct Shape
@@ -31,9 +29,7 @@ struct Shape
 };
 
 
-
 std::vector<Shape> shapes;
-
 
 
 bool placingShape = false;
@@ -43,6 +39,58 @@ ShapeType placingType = CIRCLE;
 
 bool growing = false;
 bool shrinking = false;
+
+
+
+void DrawShape(HDC hdc, Shape& shape)
+{
+    HPEN pen = CreatePen(
+        PS_SOLID,
+        3,
+        shape.color
+    );
+
+
+    HPEN oldPen =
+        (HPEN)SelectObject(
+            hdc,
+            pen
+        );
+
+
+    if(shape.type == CIRCLE)
+    {
+        Ellipse(
+            hdc,
+            shape.x,
+            shape.y,
+            (int)(shape.x + 100 * shape.scale),
+            (int)(shape.y + 100 * shape.scale)
+        );
+    }
+
+
+    if(shape.type == SQUARE)
+    {
+        Rectangle(
+            hdc,
+            shape.x,
+            shape.y,
+            (int)(shape.x + 100 * shape.scale),
+            (int)(shape.y + 100 * shape.scale)
+        );
+    }
+
+
+    SelectObject(
+        hdc,
+        oldPen
+    );
+
+
+    DeleteObject(pen);
+}
+
 
 
 
@@ -57,8 +105,6 @@ LRESULT CALLBACK WindowProc(
     {
 
 
-        // ================= DRAW =================
-
         case WM_PAINT:
         {
             PAINTSTRUCT ps;
@@ -69,65 +115,19 @@ LRESULT CALLBACK WindowProc(
             );
 
 
-
-            for(auto& shape : shapes)
+            // Draw oldest to newest.
+            // Newest shape automatically appears on top.
+            for(size_t i = 0; i < shapes.size(); i++)
             {
-
-                HPEN pen = CreatePen(
-                    PS_SOLID,
-                    3,
-                    shape.color
-                );
-
-
-                HPEN oldPen =
-                    (HPEN)SelectObject(
-                        hdc,
-                        pen
-                    );
-
-
-
-                if(shape.type == CIRCLE)
-                {
-                    Ellipse(
-                        hdc,
-                        shape.x,
-                        shape.y,
-                        (int)(shape.x + 100 * shape.scale),
-                        (int)(shape.y + 100 * shape.scale)
-                    );
-                }
-
-
-
-                if(shape.type == SQUARE)
-                {
-                    Rectangle(
-                        hdc,
-                        shape.x,
-                        shape.y,
-                        (int)(shape.x + 100 * shape.scale),
-                        (int)(shape.y + 100 * shape.scale)
-                    );
-                }
-
-
-
-                SelectObject(
+                DrawShape(
                     hdc,
-                    oldPen
+                    shapes[i]
                 );
-
-
-                DeleteObject(pen);
             }
-
 
 
             if(placingShape)
             {
-
                 const char text[] =
                     "Click where you want the shape";
 
@@ -139,9 +139,7 @@ LRESULT CALLBACK WindowProc(
                     text,
                     strlen(text)
                 );
-
             }
-
 
 
             EndPaint(
@@ -153,7 +151,8 @@ LRESULT CALLBACK WindowProc(
             return 0;
         }
 
-        // ================= MENU =================
+
+
 
         case WM_COMMAND:
         {
@@ -161,21 +160,16 @@ LRESULT CALLBACK WindowProc(
             switch(LOWORD(wParam))
             {
 
-
                 case ID_ADD_CIRCLE:
                 {
-
                     placingType = CIRCLE;
-
                     placingShape = true;
-
 
                     InvalidateRect(
                         hwnd,
                         NULL,
                         FALSE
                     );
-
 
                     return 0;
                 }
@@ -184,11 +178,8 @@ LRESULT CALLBACK WindowProc(
 
                 case ID_ADD_SQUARE:
                 {
-
                     placingType = SQUARE;
-
                     placingShape = true;
-
 
                     InvalidateRect(
                         hwnd,
@@ -196,27 +187,23 @@ LRESULT CALLBACK WindowProc(
                         FALSE
                     );
 
-
                     return 0;
                 }
 
 
 
+
                 case ID_REMOVE_ALL:
                 {
-
                     shapes.clear();
 
-
                     placingShape = false;
-
 
                     InvalidateRect(
                         hwnd,
                         NULL,
                         TRUE
                     );
-
 
                     return 0;
                 }
@@ -230,7 +217,6 @@ LRESULT CALLBACK WindowProc(
 
 
 
-        // ================= PLACE SHAPE =================
 
         case WM_LBUTTONDOWN:
         {
@@ -249,10 +235,8 @@ LRESULT CALLBACK WindowProc(
                     HIWORD(lParam);
 
 
-
                 newShape.scale =
                     0.5;
-
 
 
                 newShape.color =
@@ -263,10 +247,8 @@ LRESULT CALLBACK WindowProc(
                     );
 
 
-
                 newShape.type =
                     placingType;
-
 
 
                 shapes.push_back(
@@ -274,9 +256,7 @@ LRESULT CALLBACK WindowProc(
                 );
 
 
-
                 placingShape = false;
-
 
 
                 InvalidateRect(
@@ -284,7 +264,6 @@ LRESULT CALLBACK WindowProc(
                     NULL,
                     FALSE
                 );
-
             }
 
 
@@ -295,8 +274,6 @@ LRESULT CALLBACK WindowProc(
 
 
 
-
-        // ================= COLOR =================
 
         case WM_RBUTTONDOWN:
         {
@@ -310,8 +287,13 @@ LRESULT CALLBACK WindowProc(
 
 
 
-            for(auto& shape : shapes)
+            // Search newest shapes first
+            for(int i = (int)shapes.size() - 1; i >= 0; i--)
             {
+
+                Shape& shape =
+                    shapes[i];
+
 
                 if(
                     mouseX >= shape.x &&
@@ -321,32 +303,24 @@ LRESULT CALLBACK WindowProc(
                 )
                 {
 
-
                     CHOOSECOLOR cc = {};
 
                     COLORREF custom[16] = {};
 
-
-
                     cc.lStructSize =
                         sizeof(CHOOSECOLOR);
-
 
                     cc.hwndOwner =
                         hwnd;
 
-
                     cc.lpCustColors =
                         custom;
-
 
                     cc.rgbResult =
                         shape.color;
 
-
                     cc.Flags =
                         CC_RGBINIT;
-
 
 
                     if(ChooseColor(&cc))
@@ -354,7 +328,6 @@ LRESULT CALLBACK WindowProc(
                         shape.color =
                             cc.rgbResult;
                     }
-
 
 
                     InvalidateRect(
@@ -366,7 +339,6 @@ LRESULT CALLBACK WindowProc(
 
                     break;
                 }
-
             }
 
 
@@ -378,15 +350,11 @@ LRESULT CALLBACK WindowProc(
 
 
 
-
-        // ================= KEYS =================
-
         case WM_KEYDOWN:
         {
 
             if(shapes.empty())
                 break;
-
 
 
             Shape& shape =
@@ -397,11 +365,9 @@ LRESULT CALLBACK WindowProc(
             switch(wParam)
             {
 
-
                 case VK_LEFT:
                     shape.x -= 10;
                     break;
-
 
 
                 case VK_RIGHT:
@@ -409,11 +375,9 @@ LRESULT CALLBACK WindowProc(
                     break;
 
 
-
                 case VK_UP:
                     shape.y -= 10;
                     break;
-
 
 
                 case VK_DOWN:
@@ -423,23 +387,18 @@ LRESULT CALLBACK WindowProc(
 
 
                 case VK_ADD:
-
                 case VK_OEM_PLUS:
-
                     growing = true;
                     break;
 
 
 
                 case VK_SUBTRACT:
-
                 case VK_OEM_MINUS:
-
                     shrinking = true;
                     break;
 
             }
-
 
 
             InvalidateRect(
@@ -464,18 +423,13 @@ LRESULT CALLBACK WindowProc(
             {
 
                 case VK_ADD:
-
                 case VK_OEM_PLUS:
-
                     growing = false;
                     break;
 
 
-
                 case VK_SUBTRACT:
-
                 case VK_OEM_MINUS:
-
                     shrinking = false;
                     break;
 
@@ -490,8 +444,6 @@ LRESULT CALLBACK WindowProc(
 
 
 
-        // ================= RESIZE TIMER =================
-
         case WM_TIMER:
         {
 
@@ -502,10 +454,8 @@ LRESULT CALLBACK WindowProc(
                     shapes.back();
 
 
-
                 if(growing)
                     shape.scale += 0.02;
-
 
 
                 if(shrinking)
@@ -517,10 +467,8 @@ LRESULT CALLBACK WindowProc(
                     shape.scale = 3.0;
 
 
-
                 if(shape.scale < 0.1)
                     shape.scale = 0.1;
-
 
 
                 InvalidateRect(
@@ -528,7 +476,6 @@ LRESULT CALLBACK WindowProc(
                     NULL,
                     FALSE
                 );
-
             }
 
 
@@ -539,9 +486,9 @@ LRESULT CALLBACK WindowProc(
 
 
 
+
         case WM_DESTROY:
         {
-
             KillTimer(
                 hwnd,
                 1
@@ -589,7 +536,6 @@ int WINAPI WinMain(
     WNDCLASS wc = {};
 
 
-
     wc.lpfnWndProc =
         WindowProc;
 
@@ -608,8 +554,6 @@ int WINAPI WinMain(
 
 
     RegisterClass(&wc);
-
-
 
 
 
@@ -640,13 +584,8 @@ int WINAPI WinMain(
 
 
 
-
-    // ================= MENU =================
-
-
     HMENU hMenu =
         CreateMenu();
-
 
 
     HMENU hShapeMenu =
@@ -662,14 +601,12 @@ int WINAPI WinMain(
     );
 
 
-
     AppendMenu(
         hShapeMenu,
         MF_STRING,
         ID_ADD_SQUARE,
         "Add Square"
     );
-
 
 
     AppendMenu(
@@ -689,13 +626,10 @@ int WINAPI WinMain(
     );
 
 
-
     SetMenu(
         hwnd,
         hMenu
     );
-
-
 
 
 
@@ -715,10 +649,7 @@ int WINAPI WinMain(
 
 
 
-
-
     MSG msg = {};
-
 
 
     while(GetMessage(
@@ -733,6 +664,7 @@ int WINAPI WinMain(
         DispatchMessage(&msg);
 
     }
+
 
     return 0;
 }
