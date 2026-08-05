@@ -153,10 +153,6 @@ LRESULT CALLBACK WindowProc(
             return 0;
         }
 
-
-
-
-
         // ================= MENU =================
 
         case WM_COMMAND:
