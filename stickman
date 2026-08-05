@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <vector>
 #include <cstring>
+#include <commdlg.h>
 
 
 #define ID_ADD_CIRCLE 1001
@@ -15,19 +16,17 @@ struct Circle
     int x;
     int y;
     double scale;
+    COLORREF color;
 };
 
 
-// Store all circles
+// Store circles
 std::vector<Circle> circles;
 
 
 
-// Placement mode
 bool placingCircle = false;
 
-
-// Resize controls
 bool growing = false;
 bool shrinking = false;
 
@@ -49,9 +48,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 
 
-            // Draw every circle
-            for (auto& circle : circles)
+            for(auto& circle : circles)
             {
+
+                HPEN pen = CreatePen(
+                    PS_SOLID,
+                    3,
+                    circle.color
+                );
+
+
+                HPEN oldPen =
+                    (HPEN)SelectObject(hdc, pen);
+
+
+
                 Ellipse(
                     hdc,
                     circle.x,
@@ -59,15 +70,26 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     (int)(circle.x + 100 * circle.scale),
                     (int)(circle.y + 100 * circle.scale)
                 );
+
+
+
+                SelectObject(
+                    hdc,
+                    oldPen
+                );
+
+
+                DeleteObject(pen);
             }
 
 
 
-            // Placement message
-            if (placingCircle)
+
+            if(placingCircle)
             {
                 const char message[] =
                     "Click where you want the circle";
+
 
                 TextOut(
                     hdc,
@@ -80,7 +102,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 
 
-            EndPaint(hwnd, &ps);
+            EndPaint(hwnd,&ps);
 
             return 0;
         }
@@ -100,8 +122,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     placingCircle = true;
 
-                    // Do not erase existing circles
-                    InvalidateRect(hwnd, NULL, FALSE);
+                    InvalidateRect(
+                        hwnd,
+                        NULL,
+                        FALSE
+                    );
 
                     return 0;
                 }
@@ -115,8 +140,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                     placingCircle = false;
 
-                    // Clear screen
-                    InvalidateRect(hwnd, NULL, TRUE);
+
+                    InvalidateRect(
+                        hwnd,
+                        NULL,
+                        TRUE
+                    );
 
                     return 0;
                 }
@@ -130,10 +159,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 
 
-        // ===== MOUSE =====
+        // ===== LEFT CLICK =====
 
         case WM_LBUTTONDOWN:
         {
+
             if(placingCircle)
             {
 
@@ -146,8 +176,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 newCircle.scale = 0.5;
 
 
+                // Default color: blue
+                newCircle.color =
+                    RGB(0,0,255);
 
-                // Add circle to list
+
+
                 circles.push_back(newCircle);
 
 
@@ -156,8 +190,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 
 
-                // Keep old circles
-                InvalidateRect(hwnd, NULL, FALSE);
+                InvalidateRect(
+                    hwnd,
+                    NULL,
+                    FALSE
+                );
             }
 
 
@@ -167,6 +204,74 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 
 
+
+        // ===== RIGHT CLICK COLOR CHANGE =====
+
+        case WM_RBUTTONDOWN:
+        {
+
+            int mouseX = LOWORD(lParam);
+            int mouseY = HIWORD(lParam);
+
+
+
+            for(auto& circle : circles)
+            {
+
+                if(
+                    mouseX >= circle.x &&
+                    mouseX <= circle.x + 100 * circle.scale &&
+                    mouseY >= circle.y &&
+                    mouseY <= circle.y + 100 * circle.scale
+                )
+                {
+
+                    CHOOSECOLOR cc = {};
+
+                    COLORREF customColors[16] = {};
+
+
+
+                    cc.lStructSize =
+                        sizeof(CHOOSECOLOR);
+
+                    cc.hwndOwner =
+                        hwnd;
+
+                    cc.lpCustColors =
+                        customColors;
+
+                    cc.rgbResult =
+                        circle.color;
+
+                    cc.Flags =
+                        CC_FULLOPEN |
+                        CC_RGBINIT;
+
+
+
+                    if(ChooseColor(&cc))
+                    {
+                        circle.color =
+                            cc.rgbResult;
+                    }
+
+
+
+                    InvalidateRect(
+                        hwnd,
+                        NULL,
+                        FALSE
+                    );
+
+
+                    break;
+                }
+            }
+
+
+            return 0;
+        }
 
         // ===== KEY DOWN =====
 
@@ -178,8 +283,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 
 
-            // Edit newest circle
-            Circle& circle = circles.back();
+            Circle& circle =
+                circles.back();
 
 
 
@@ -204,15 +309,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 case VK_DOWN:
                     circle.y += 10;
                     break;
-
-
-
+                
                 case VK_ADD:
                 case VK_OEM_PLUS:
                     growing = true;
                     break;
-
-
 
                 case VK_SUBTRACT:
                 case VK_OEM_MINUS:
@@ -221,17 +322,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             }
 
-
-
-            InvalidateRect(hwnd, NULL, FALSE);
+            InvalidateRect(
+                hwnd,
+                NULL,
+                FALSE
+            );
 
 
             return 0;
         }
-
-
-
-
 
         // ===== KEY UP =====
 
@@ -243,6 +342,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                 case VK_ADD:
                 case VK_OEM_PLUS:
+
                     growing = false;
                     break;
 
@@ -250,6 +350,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                 case VK_SUBTRACT:
                 case VK_OEM_MINUS:
+
                     shrinking = false;
                     break;
 
@@ -259,10 +360,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             return 0;
         }
 
-
-
-
-
         // ===== TIMER =====
 
         case WM_TIMER:
@@ -271,50 +368,35 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if(!circles.empty())
             {
 
-                Circle& circle = circles.back();
-
-
+                Circle& circle =
+                    circles.back();
 
                 if(growing)
-                {
                     circle.scale += 0.02;
-                }
-
-
 
                 if(shrinking)
-                {
                     circle.scale -= 0.02;
-                }
-
-
-
-                // Size limits
 
                 if(circle.scale > 3.0)
                     circle.scale = 3.0;
 
-
-
                 if(circle.scale < 0.1)
                     circle.scale = 0.1;
 
-
-
-                InvalidateRect(hwnd, NULL, FALSE);
+                InvalidateRect(
+                    hwnd,
+                    NULL,
+                    FALSE
+                );
             }
 
 
             return 0;
         }
 
-
-
-
-
         case WM_DESTROY:
         {
-            KillTimer(hwnd, 1);
+            KillTimer(hwnd,1);
 
             PostQuitMessage(0);
 
@@ -323,16 +405,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     }
 
-
-
-    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    return DefWindowProc(
+        hwnd,
+        uMsg,
+        wParam,
+        lParam
+    );
 }
-
-
-
-
-
-
 
 int WINAPI WinMain(
     HINSTANCE hInstance,
@@ -341,33 +420,29 @@ int WINAPI WinMain(
     int nCmdShow)
 {
 
-
-    const char CLASS_NAME[] = "CircleEditor";
-
-
+    const char CLASS_NAME[] =
+        "CircleEditor";
 
     WNDCLASS wc = {};
 
-    wc.lpfnWndProc = WindowProc;
+    wc.lpfnWndProc =
+        WindowProc;
 
-    wc.hInstance = hInstance;
+    wc.hInstance =
+        hInstance;
 
-    wc.lpszClassName = CLASS_NAME;
+    wc.lpszClassName =
+        CLASS_NAME;
 
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-
-
+    wc.hbrBackground =
+        (HBRUSH)(COLOR_WINDOW + 1);
 
     RegisterClass(&wc);
-
-
-
-
 
     HWND hwnd = CreateWindowEx(
         0,
         CLASS_NAME,
-        "Circle Editor",
+        "Circle Editor - Color Edition",
         WS_OVERLAPPEDWINDOW,
 
         CW_USEDEFAULT,
@@ -381,25 +456,17 @@ int WINAPI WinMain(
         NULL
     );
 
-
-
     if(hwnd == NULL)
         return 0;
 
-
-
-
-
-
-
     // ===== MENU =====
 
-    HMENU hMenu = CreateMenu();
-
-    HMENU hCircleMenu = CreatePopupMenu();
-
+    HMENU hMenu =
+        CreateMenu();
 
 
+    HMENU hCircleMenu =
+        CreatePopupMenu();
 
     AppendMenu(
         hCircleMenu,
@@ -408,16 +475,12 @@ int WINAPI WinMain(
         "Add Circle"
     );
 
-
-
     AppendMenu(
         hCircleMenu,
         MF_STRING,
         ID_REMOVE_CIRCLE,
         "Remove All Circles"
     );
-
-
 
     AppendMenu(
         hMenu,
@@ -426,34 +489,23 @@ int WINAPI WinMain(
         "Circle"
     );
 
+    SetMenu(hwnd,hMenu);
 
+    ShowWindow(
+        hwnd,
+        nCmdShow
+    );
 
-    SetMenu(hwnd, hMenu);
-
-
-
-
-
-
-    ShowWindow(hwnd, nCmdShow);
-
-
-
-
-    // 60 FPS timer
-
-    SetTimer(hwnd, 1, 16, NULL);
-
-
-
-
-
+    SetTimer(
+        hwnd,
+        1,
+        16,
+        NULL
+    );
 
     MSG msg = {};
 
-
-
-    while(GetMessage(&msg, NULL, 0, 0))
+    while(GetMessage(&msg,NULL,0,0))
     {
         TranslateMessage(&msg);
 
