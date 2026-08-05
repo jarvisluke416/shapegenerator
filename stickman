@@ -1,158 +1,335 @@
 #include <windows.h>
+#include <vector>
+#include <cstring>
 
-// Circle position
-int circleX = 350;
-int circleY = 100;
 
-// Circle size
-double scale = 0.5;
+#define ID_ADD_CIRCLE 1001
+#define ID_REMOVE_CIRCLE 1002
+
+
+
+// ===== CIRCLE OBJECT =====
+
+struct Circle
+{
+    int x;
+    int y;
+    double scale;
+};
+
+
+// Store all circles
+std::vector<Circle> circles;
+
+
+
+// Placement mode
+bool placingCircle = false;
+
 
 // Resize controls
 bool growing = false;
 bool shrinking = false;
 
 
+
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    switch (uMsg)
+    switch(uMsg)
     {
+
+
+        // ===== DRAW =====
 
         case WM_PAINT:
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
-            int x = circleX;
-            int y = circleY;
-            double s = scale;
 
 
-            // ===== CIRCLE =====
-            Ellipse(
-                hdc,
-                x,
-                y,
-                (int)(x + 100 * s),
-                (int)(y + 100 * s)
-            );
+            // Draw every circle
+            for (auto& circle : circles)
+            {
+                Ellipse(
+                    hdc,
+                    circle.x,
+                    circle.y,
+                    (int)(circle.x + 100 * circle.scale),
+                    (int)(circle.y + 100 * circle.scale)
+                );
+            }
+
+
+
+            // Placement message
+            if (placingCircle)
+            {
+                const char message[] =
+                    "Click where you want the circle";
+
+                TextOut(
+                    hdc,
+                    10,
+                    10,
+                    message,
+                    strlen(message)
+                );
+            }
+
 
 
             EndPaint(hwnd, &ps);
+
             return 0;
         }
 
 
-        // ===== KEY PRESSED =====
+
+
+
+        // ===== MENU =====
+
+        case WM_COMMAND:
+        {
+            switch(LOWORD(wParam))
+            {
+
+                case ID_ADD_CIRCLE:
+                {
+                    placingCircle = true;
+
+                    // Do not erase existing circles
+                    InvalidateRect(hwnd, NULL, FALSE);
+
+                    return 0;
+                }
+
+
+
+
+                case ID_REMOVE_CIRCLE:
+                {
+                    circles.clear();
+
+                    placingCircle = false;
+
+                    // Clear screen
+                    InvalidateRect(hwnd, NULL, TRUE);
+
+                    return 0;
+                }
+
+            }
+
+            break;
+        }
+
+
+
+
+
+        // ===== MOUSE =====
+
+        case WM_LBUTTONDOWN:
+        {
+            if(placingCircle)
+            {
+
+                Circle newCircle;
+
+
+                newCircle.x = LOWORD(lParam);
+                newCircle.y = HIWORD(lParam);
+
+                newCircle.scale = 0.5;
+
+
+
+                // Add circle to list
+                circles.push_back(newCircle);
+
+
+
+                placingCircle = false;
+
+
+
+                // Keep old circles
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+
+
+            return 0;
+        }
+
+
+
+
+
+        // ===== KEY DOWN =====
+
         case WM_KEYDOWN:
         {
-            switch (wParam)
+
+            if(circles.empty())
+                break;
+
+
+
+            // Edit newest circle
+            Circle& circle = circles.back();
+
+
+
+            switch(wParam)
             {
-                // Movement
+
                 case VK_LEFT:
-                    circleX -= 10;
+                    circle.x -= 10;
                     break;
+
 
                 case VK_RIGHT:
-                    circleX += 10;
+                    circle.x += 10;
                     break;
+
 
                 case VK_UP:
-                    circleY -= 10;
+                    circle.y -= 10;
                     break;
+
 
                 case VK_DOWN:
-                    circleY += 10;
+                    circle.y += 10;
                     break;
 
 
-                // Grow
-                case VK_ADD:        // Numpad +
-                case VK_OEM_PLUS:   // Keyboard +
+
+                case VK_ADD:
+                case VK_OEM_PLUS:
                     growing = true;
                     break;
 
 
-                // Shrink
-                case VK_SUBTRACT:   // Numpad -
-                case VK_OEM_MINUS:  // Keyboard -
+
+                case VK_SUBTRACT:
+                case VK_OEM_MINUS:
                     shrinking = true;
                     break;
+
             }
 
 
-            InvalidateRect(hwnd, NULL, TRUE);
+
+            InvalidateRect(hwnd, NULL, FALSE);
+
+
             return 0;
         }
 
 
 
-        // ===== KEY RELEASED =====
+
+
+        // ===== KEY UP =====
+
         case WM_KEYUP:
         {
-            switch (wParam)
+
+            switch(wParam)
             {
-                // Stop growing
+
                 case VK_ADD:
                 case VK_OEM_PLUS:
                     growing = false;
                     break;
 
 
-                // Stop shrinking
+
                 case VK_SUBTRACT:
                 case VK_OEM_MINUS:
                     shrinking = false;
                     break;
+
             }
+
 
             return 0;
         }
+
+
 
 
 
         // ===== TIMER =====
+
         case WM_TIMER:
         {
-            if (growing)
+
+            if(!circles.empty())
             {
-                scale += 0.02;
+
+                Circle& circle = circles.back();
+
+
+
+                if(growing)
+                {
+                    circle.scale += 0.02;
+                }
+
+
+
+                if(shrinking)
+                {
+                    circle.scale -= 0.02;
+                }
+
+
+
+                // Size limits
+
+                if(circle.scale > 3.0)
+                    circle.scale = 3.0;
+
+
+
+                if(circle.scale < 0.1)
+                    circle.scale = 0.1;
+
+
+
+                InvalidateRect(hwnd, NULL, FALSE);
             }
 
-
-            if (shrinking)
-            {
-                scale -= 0.02;
-            }
-
-
-            // Size limits
-            if (scale > 3.0)
-                scale = 3.0;
-
-
-            if (scale < 0.1)
-                scale = 0.1;
-
-
-            InvalidateRect(hwnd, NULL, TRUE);
 
             return 0;
         }
+
+
 
 
 
         case WM_DESTROY:
         {
             KillTimer(hwnd, 1);
+
             PostQuitMessage(0);
+
             return 0;
         }
 
     }
 
 
+
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
+
+
+
 
 
 
@@ -163,24 +340,34 @@ int WINAPI WinMain(
     LPSTR,
     int nCmdShow)
 {
-    const char CLASS_NAME[] = "CircleWindow";
+
+
+    const char CLASS_NAME[] = "CircleEditor";
+
 
 
     WNDCLASS wc = {};
 
     wc.lpfnWndProc = WindowProc;
+
     wc.hInstance = hInstance;
+
     wc.lpszClassName = CLASS_NAME;
+
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+
 
 
     RegisterClass(&wc);
 
 
 
+
+
     HWND hwnd = CreateWindowEx(
         0,
         CLASS_NAME,
-        "Resizable Moving Circle",
+        "Circle Editor",
         WS_OVERLAPPEDWINDOW,
 
         CW_USEDEFAULT,
@@ -196,28 +383,82 @@ int WINAPI WinMain(
 
 
 
-    if (hwnd == NULL)
+    if(hwnd == NULL)
         return 0;
+
+
+
+
+
+
+
+    // ===== MENU =====
+
+    HMENU hMenu = CreateMenu();
+
+    HMENU hCircleMenu = CreatePopupMenu();
+
+
+
+
+    AppendMenu(
+        hCircleMenu,
+        MF_STRING,
+        ID_ADD_CIRCLE,
+        "Add Circle"
+    );
+
+
+
+    AppendMenu(
+        hCircleMenu,
+        MF_STRING,
+        ID_REMOVE_CIRCLE,
+        "Remove All Circles"
+    );
+
+
+
+    AppendMenu(
+        hMenu,
+        MF_POPUP,
+        (UINT_PTR)hCircleMenu,
+        "Circle"
+    );
+
+
+
+    SetMenu(hwnd, hMenu);
+
+
+
 
 
 
     ShowWindow(hwnd, nCmdShow);
 
 
-    // Timer runs every 16 milliseconds (~60 FPS)
+
+
+    // 60 FPS timer
+
     SetTimer(hwnd, 1, 16, NULL);
+
+
+
 
 
 
     MSG msg = {};
 
-    while (GetMessage(&msg, NULL, 0, 0))
+
+
+    while(GetMessage(&msg, NULL, 0, 0))
     {
         TranslateMessage(&msg);
+
         DispatchMessage(&msg);
     }
-
-
 
     return 0;
 }
