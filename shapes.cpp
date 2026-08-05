@@ -11,7 +11,7 @@
 #define ID_ADD_TRIANGLE 1004
 #define ID_ADD_HEART 1005
 #define ID_ADD_STAR 1006
-
+#define ID_ADD_PENTAGON 1007
 
 enum ShapeType
 {
@@ -19,7 +19,9 @@ enum ShapeType
     SQUARE,
     TRIANGLE,
     HEART,
-    STAR
+    STAR,
+    PENTAGON
+
 };
 
 
@@ -138,10 +140,6 @@ void DrawShape(HDC hdc, Shape& shape)
         );
     }
 
-
-
-
-
     // ================= HEART =================
 
     if(shape.type == HEART)
@@ -245,10 +243,6 @@ void DrawShape(HDC hdc, Shape& shape)
     }
 
 
-
-
-
-
     // ================= STAR =================
 
     if(shape.type == STAR)
@@ -316,7 +310,56 @@ void DrawShape(HDC hdc, Shape& shape)
         );
     }
 
+    // ================= PENTAGON =================
 
+if(shape.type == PENTAGON)
+{
+    POINT points[5];
+
+
+    int centerX =
+        shape.x + size / 2;
+
+
+    int centerY =
+        shape.y + size / 2;
+
+
+
+    double radius =
+        size / 2.0;
+
+
+
+    double angle =
+        -3.14159265358979323846 / 2;
+
+
+
+    for(int i = 0; i < 5; i++)
+    {
+        points[i].x =
+            centerX +
+            (int)(cos(angle) * radius);
+
+
+        points[i].y =
+            centerY +
+            (int)(sin(angle) * radius);
+
+
+        angle +=
+            2 * 3.14159265358979323846 / 5;
+    }
+
+
+
+    Polygon(
+        hdc,
+        points,
+        5
+    );
+}
 
     SelectObject(
         hdc,
@@ -475,6 +518,21 @@ LRESULT CALLBACK WindowProc(
                 }
 
 
+                case ID_ADD_PENTAGON:
+{
+    placingType = PENTAGON;
+    placingShape = true;
+
+    InvalidateRect(
+        hwnd,
+        NULL,
+        FALSE
+    );
+
+    return 0;
+}
+
+
 
                 case ID_REMOVE_ALL:
                 {
@@ -557,12 +615,6 @@ LRESULT CALLBACK WindowProc(
             return 0;
         }
 
-
-
-
-
-
-
         case WM_RBUTTONDOWN:
         {
             int mouseX =
@@ -642,12 +694,6 @@ LRESULT CALLBACK WindowProc(
             return 0;
         }
 
-
-
-
-
-
-
         case WM_KEYDOWN:
         {
             if(shapes.empty())
@@ -711,12 +757,6 @@ LRESULT CALLBACK WindowProc(
 
             return 0;
         }
-
-
-
-
-
-
 
         case WM_KEYUP:
         {
@@ -789,12 +829,6 @@ LRESULT CALLBACK WindowProc(
             return 0;
         }
 
-
-
-
-
-
-
         case WM_DESTROY:
         {
             KillTimer(
@@ -820,12 +854,6 @@ LRESULT CALLBACK WindowProc(
         lParam
     );
 }
-
-
-
-
-
-
 
 int WINAPI WinMain(
     HINSTANCE hInstance,
@@ -869,7 +897,7 @@ int WINAPI WinMain(
         CreateWindowEx(
             0,
             CLASS_NAME,
-            "Circle Square Triangle Heart Star Editor",
+            "Color Shape Editor",
             WS_OVERLAPPEDWINDOW,
 
             CW_USEDEFAULT,
@@ -940,6 +968,13 @@ int WINAPI WinMain(
         MF_STRING,
         ID_ADD_STAR,
         "Add Star"
+    );
+
+    AppendMenu(
+       hShapeMenu,
+       MF_STRING,
+       ID_ADD_PENTAGON,
+       "Add Pentagon"
     );
 
 
